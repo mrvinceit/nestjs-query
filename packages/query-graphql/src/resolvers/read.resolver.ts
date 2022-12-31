@@ -1,10 +1,10 @@
 import { ArgsType, Resolver } from '@nestjs/graphql'
-import { Class, Filter, mergeQuery, QueryService } from '@ptc-org/nestjs-query-core'
+import { Class, Filter, mergeQuery, Query, QueryService, Selection } from '@ptc-org/nestjs-query-core'
 import omit from 'lodash.omit'
 
 import { OperationGroup } from '../auth'
 import { getDTONames } from '../common'
-import { AuthorizerFilter, HookArgs, ResolverQuery } from '../decorators'
+import { AuthorizerFilter, GraphQLLookAheadRelations, HookArgs, ResolverQuery } from '../decorators'
 import { HookTypes } from '../hooks'
 import { AuthorizerInterceptor, HookInterceptor } from '../interceptors'
 import {
@@ -79,9 +79,15 @@ export const Readable =
           operationGroup: OperationGroup.READ,
           many: false
         })
-        authorizeFilter?: Filter<DTO>
+        authorizeFilter?: Filter<DTO>,
+        @GraphQLLookAheadRelations<DTO>()
+        selections?: Selection<DTO>
       ): Promise<DTO> {
-        return this.service.getById(input.id, { filter: authorizeFilter, withDeleted: opts?.one?.withDeleted })
+        return this.service.getById(input.id, {
+          filter: authorizeFilter,
+          withDeleted: opts?.one?.withDeleted,
+          selections
+        })
       }
 
       @ResolverQuery(
@@ -97,10 +103,12 @@ export const Readable =
           operationGroup: OperationGroup.READ,
           many: true
         })
-        authorizeFilter?: Filter<DTO>
+        authorizeFilter?: Filter<DTO>,
+        @GraphQLLookAheadRelations<DTO>()
+        selections?: Selection<DTO>
       ): Promise<InstanceType<typeof ConnectionType>> {
         return ConnectionType.createFromPromise(
-          (q) => this.service.query(q),
+          (q) => this.service.query(Object.assign({}, q, { selections } as Query<DTO>)),
           mergeQuery(query, { filter: authorizeFilter }),
           (filter) => this.service.count(filter)
         )

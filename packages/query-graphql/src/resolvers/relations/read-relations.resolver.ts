@@ -1,10 +1,10 @@
 import { ExecutionContext } from '@nestjs/common'
 import { Args, ArgsType, Context, Parent, Resolver } from '@nestjs/graphql'
-import { Class, Filter, mergeQuery, QueryService } from '@ptc-org/nestjs-query-core'
+import { Class, Filter, mergeQuery, QueryService, Selection } from '@ptc-org/nestjs-query-core'
 
 import { OperationGroup } from '../../auth'
 import { getDTONames } from '../../common'
-import { RelationAuthorizerFilter, ResolverField } from '../../decorators'
+import { GraphQLLookAheadRelations, Relation, RelationAuthorizerFilter, ResolverField } from '../../decorators'
 import { AuthorizerInterceptor } from '../../interceptors'
 import { CountRelationsLoader, DataLoaderFactory, FindRelationsLoader, QueryRelationsLoader } from '../../loader'
 import { QueryArgsType } from '../../types'
@@ -51,7 +51,10 @@ const ReadOneRelationMixin =
         return DataLoaderFactory.getOrCreateLoader(
           context,
           loaderName,
-          findLoader.createLoader(this.service, { withDeleted: relation.withDeleted })
+          findLoader.createLoader(this.service, {
+            withDeleted: relation.withDeleted,
+            lookedAhead: relation.enableLookAhead
+          })
         ).load({
           dto,
           filter: authFilter
@@ -106,7 +109,9 @@ const ReadManyRelationMixin =
           operationGroup: OperationGroup.READ,
           many: true
         })
-        relationFilter?: Filter<Relation>
+        relationFilter?: Filter<Relation>,
+        @GraphQLLookAheadRelations<Relation>()
+        selections?: Selection<Relation>
       ): Promise<InstanceType<typeof CT>> {
         const relationQuery = await transformAndValidate(RelationQA, q)
         const relationLoader = DataLoaderFactory.getOrCreateLoader(
@@ -121,7 +126,7 @@ const ReadManyRelationMixin =
         )
         return CT.createFromPromise(
           (query) => relationLoader.load({ dto, query }),
-          mergeQuery(relationQuery, { filter: relationFilter }),
+          mergeQuery(relationQuery, { filter: relationFilter, selections }),
           (filter) => relationCountLoader.load({ dto, filter })
         )
       }

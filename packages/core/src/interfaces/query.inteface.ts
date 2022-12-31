@@ -1,5 +1,6 @@
 import { Filterable } from './filterable.interface'
 import { Paging } from './paging.interface'
+import { Selection } from './select-relation.interface'
 import { SortField } from './sort-field.interface'
 
 /**
@@ -21,6 +22,7 @@ import { SortField } from './sort-field.interface'
  *   filter: { name: { like: 'Foo%' } }, // filter name LIKE "Foo%"
  *   paging: { limit: 10, offset: 20}, // LIMIT 10 OFFSET 20
  *   sorting: [{ field: 'name', direction: SortDirection.DESC }], // ORDER BY name DESC
+ *   selections: { id: true, name: true, completed: true }, // SELECT id, name, completed
  * };
  * ```
  *
@@ -35,4 +37,8 @@ export interface Query<T> extends Filterable<T> {
    * Option to sort the collection.
    */
   sorting?: SortField<T>[]
+  /**
+   * Additional relation to select and fetch in the same query.
+   */
+  selections?: Selection<T>
 }
