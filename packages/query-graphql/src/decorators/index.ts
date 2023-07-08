@@ -8,7 +8,7 @@ export {
   FilterableFieldOptions,
   getFilterableFields
 } from './filterable-field.decorator'
-export * from './graphql-look-ahead-relations.decorator'
+export * from './selection-info.decorator'
 export * from './hook.decorator'
 export * from './hook-args.decorator'
 export * from './id-field.decorator'

@@ -1,5 +1,5 @@
 import { Filterable } from './filterable.interface'
-import { Selection } from './select-relation.interface'
+import { Selection } from './selection.interface'
 
 export interface FindByIdOptions<DTO> extends Filterable<DTO> {
   /**

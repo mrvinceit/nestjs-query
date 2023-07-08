@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ASTNode, FieldNode, getArgumentValues, getNamedType, GraphQLField, GraphQLUnionType, isCompositeType } from 'graphql'
 import { FieldsByTypeName, parseResolveInfo, ResolveTree } from 'graphql-parse-resolve-info'
 import { merge } from 'lodash'
@@ -106,28 +111,52 @@ export function simplifyResolveInfo<DTO>(resolveInfo: ResolveInfo): QueryResolve
 
 // TODO: Refactor this function to use ResolveInfo directly
 // Fix typing issues with ResolveTree / FieldsByTypeName types
-function buildSelectionInfo<DTO>(
-  parsedInfo: ResolveTree | FieldsByTypeName,
-  cnxNames: string[] | ((name: string) => boolean) = ['Connection']
-): { name: string; info: SelectionInfoType<DTO> | boolean } {
-  const map = {} as SelectionInfoType<DTO>
-  let mapInner: AliasedSelection<DTO> | SelectionInfoType<DTO> = map
-  const fieldName = parsedInfo.name as string
-  const alias = parsedInfo.alias as string
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  if (fieldName !== alias) {
-    map.$aliases = {} as Record<string, AliasedSelection<DTO>>
-    map.$aliases[alias] = {} as AliasedSelection<DTO>
-    mapInner = map.$aliases[alias]
+function mergeSelection(target, source): any | boolean {
+  if (!target) {
+    // return source === true ? { $exists: true } : source;
+    return source
   }
 
-  if (Object.keys(parsedInfo.args).length > 0) {
-    mapInner.$args = parsedInfo.args as Record<string, object>
+  // if (target === true) {
+  //   // item is scalar and we have an alias for the source
+  //   return merge({ $exists: true }, source);
+  // }
+
+  return merge(target, source)
+}
+
+function buildSelectionInfo<DTO>(
+  parsedInfo: any,
+  cnxNames: string[] | ((name: string) => boolean) = ['Connection']
+): { name: string; info: any | boolean } {
+  let map = {} as any
+  const fieldName = parsedInfo.name as string
+  const alias = parsedInfo.alias as string
+  let mapInner: () => typeof map = () => map
+  let updateMapInner: (m: typeof map) => typeof map = (m) => (map = m)
+
+  if (fieldName !== alias) {
+    map.$aliases = {} as Record<string, any>
+    map.$aliases[alias] = {}
+    mapInner = () => map.$aliases[alias]
+    updateMapInner = (m) => (map.$aliases[alias] = m)
+  }
+
+  if (Object.keys(parsedInfo.args || {}).length > 0) {
+    mapInner().$args = parsedInfo.args as Record<string, object>
   }
 
   const isConnectionType =
     typeof cnxNames === 'function' ? cnxNames : (typeName: string) => cnxNames.some((n) => typeName.indexOf(n) > 0)
+
+  const updateObjProps = (fieldObj, map) => {
+    const fields = Object.keys(fieldObj)
+
+    fields.forEach((f) => {
+      const { name, info } = buildSelectionInfo(fieldObj[f], cnxNames)
+      map[name] = mergeSelection(map[name], info)
+    })
+  }
 
   if (parsedInfo?.fieldsByTypeName) {
     const types = Object.keys(parsedInfo.fieldsByTypeName)
@@ -138,43 +167,28 @@ function buildSelectionInfo<DTO>(
 
         // Is a connection // if it is then we only want the edge node details
         if (isConnectionType(t)) {
-          const cnxObj = fieldObj as any
+          const cnxObj = fieldObj
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
           const keys = Object.keys(cnxObj.edges?.fieldsByTypeName || {})
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           const cursorCnxObj = keys.length ? cnxObj.edges?.fieldsByTypeName[keys[0]]?.node : undefined
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           const offsetCnxObj = cnxObj.nodes
           const cnxFieldObj = cursorCnxObj || offsetCnxObj
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
           const cnxTypes = Object.keys(cnxFieldObj.fieldsByTypeName)
 
           cnxTypes.forEach((cxt) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-            const cnxFields = Object.keys(cnxFieldObj.fieldsByTypeName[cxt])
-            cnxFields.forEach((f) => {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              const { name, info } = buildSelectionInfo(cnxFieldObj.fieldsByTypeName[cxt][f], cnxNames)
-              mapInner[name] = merge(mapInner[name], info)
-            })
+            updateObjProps(cnxFieldObj.fieldsByTypeName[cxt], mapInner())
           })
         } else {
-          const fields = Object.keys(fieldObj)
-          fields.forEach((f) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            const { name, info } = buildSelectionInfo(fieldObj[f], cnxNames)
-            mapInner[name] = merge(mapInner[name], info)
-          })
+          updateObjProps(fieldObj, mapInner())
         }
       })
+    } else {
+      updateMapInner({ $exists: true })
     }
   }
 
-  const hasKeys = !!Object.keys(map).length
-
-  return { name: fieldName, info: hasKeys ? map : true }
+  return { name: fieldName, info: map }
 }
 
 export function createSelectionInfo<DTO>(

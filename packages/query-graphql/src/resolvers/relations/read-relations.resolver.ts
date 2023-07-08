@@ -4,7 +4,7 @@ import { Class, Filter, mergeQuery, QueryService, Selection } from '@ptc-org/nes
 
 import { OperationGroup } from '../../auth'
 import { getDTONames } from '../../common'
-import { GraphQLLookAheadRelations, Relation, RelationAuthorizerFilter, ResolverField } from '../../decorators'
+import { SelectionInfo, Relation, RelationAuthorizerFilter, ResolverField } from '../../decorators'
 import { AuthorizerInterceptor } from '../../interceptors'
 import { CountRelationsLoader, DataLoaderFactory, FindRelationsLoader, QueryRelationsLoader } from '../../loader'
 import { QueryArgsType } from '../../types'
@@ -110,7 +110,7 @@ const ReadManyRelationMixin =
           many: true
         })
         relationFilter?: Filter<Relation>,
-        @GraphQLLookAheadRelations<Relation>()
+        @SelectionInfo<Relation>()
         selections?: Selection<Relation>
       ): Promise<InstanceType<typeof CT>> {
         const relationQuery = await transformAndValidate(RelationQA, q)

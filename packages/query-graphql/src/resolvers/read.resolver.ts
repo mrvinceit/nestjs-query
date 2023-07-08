@@ -4,7 +4,7 @@ import omit from 'lodash.omit'
 
 import { OperationGroup } from '../auth'
 import { getDTONames } from '../common'
-import { AuthorizerFilter, GraphQLLookAheadRelations, HookArgs, ResolverQuery } from '../decorators'
+import { AuthorizerFilter, SelectionInfo, HookArgs, ResolverQuery } from '../decorators'
 import { HookTypes } from '../hooks'
 import { AuthorizerInterceptor, HookInterceptor } from '../interceptors'
 import {
@@ -80,7 +80,7 @@ export const Readable =
           many: false
         })
         authorizeFilter?: Filter<DTO>,
-        @GraphQLLookAheadRelations<DTO>()
+        @SelectionInfo<DTO>()
         selections?: Selection<DTO>
       ): Promise<DTO> {
         return this.service.getById(input.id, {
@@ -104,7 +104,7 @@ export const Readable =
           many: true
         })
         authorizeFilter?: Filter<DTO>,
-        @GraphQLLookAheadRelations<DTO>()
+        @SelectionInfo<DTO>()
         selections?: Selection<DTO>
       ): Promise<InstanceType<typeof ConnectionType>> {
         return ConnectionType.createFromPromise(

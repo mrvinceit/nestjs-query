@@ -1,6 +1,6 @@
 import { Filterable } from './filterable.interface'
 import { Paging } from './paging.interface'
-import { Selection } from './select-relation.interface'
+import { Selection } from './selection.interface'
 import { SortField } from './sort-field.interface'
 
 /**
